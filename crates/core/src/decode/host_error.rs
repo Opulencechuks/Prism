@@ -50,6 +50,67 @@ impl HostError {
             Self::Unknown { .. } => "Unknown",
         }
     }
+    /// Returns a one-line plain-English summary of what went wrong.
+    ///
+    /// This is the headline shown by `prism decode` — the first thing a
+    /// developer reads when diagnosing a failed transaction.
+    pub fn summary(&self) -> String {
+        match self {
+            Self::Budget { code } => match code {
+                0 => "CPU budget exceeded: the transaction ran out of CPU instructions before completing execution.".to_string(),
+                _ => format!("Budget error (code {code}): the transaction exceeded an allocated resource budget."),
+            },
+            Self::Storage { code } => match code {
+                0 => "Storage access denied: the contract tried to read or write a ledger entry not declared in the transaction footprint.".to_string(),
+                _ => format!("Storage error (code {code}): an unexpected error occurred while accessing contract data."),
+            },
+            Self::Auth { code } => match code {
+                0 => "Authorization failed: the transaction is missing or has invalid auth entries for this contract call.".to_string(),
+                _ => format!("Auth error (code {code}): an authorization requirement was not satisfied."),
+            },
+            Self::Context { code } => match code {
+               0 => "Host internal error: an unexpected Soroban runtime error occurred — this may be a platform bug, not a contract bug.".to_string(),
+                _ => format!("Context error (code {code}): the contract was invoked in an invalid execution context."),
+            },
+            Self::Value { code } => match code {
+                0 => "Invalid value: a host function received an argument of the wrong type or format.".to_string(),
+                _ => format!("Value error (code {code}): a host value could not be converted or validated."),
+            },
+            Self::Object { code } => match code {
+                0 => "Index out of bounds: the contract accessed a vector or byte array with an index beyond its length.".to_string(),
+                _ => format!("Object error (code {code}): an operation on a host object (vector, map, bytes) failed."),
+            },
+            Self::Crypto { code } => match code {
+                0 => "Invalid cryptographic input: a public key, signature, or hash input has the wrong length or format.".to_string(),
+                _ => format!("Crypto error (code {code}): a cryptographic operation failed due to invalid input."),
+            },
+            Self::Contract { code } => match code {
+               0 => "Contract error: the contract's own logic rejected this call — run with --resolve to map the code to its name.".to_string(),
+                _ => format!("Contract error (code {code}): the contract returned a non-zero error code — run with --resolve to identify it."),
+            },
+            Self::Wasm { code } => match code {
+               0 => "Invalid WASM module: the contract bytecode failed validation — recompile with a compatible Soroban SDK version.".to_string(),
+                _ => format!("WASM error (code {code}): the contract's WASM module could not be loaded or executed."),
+            },
+            Self::Events { code } => match code {
+                0 => "Event size limit exceeded: the transaction emitted more event data than the protocol allows in a single execution.".to_string(),
+                _ => format!("Events error (code {code}): an error occurred during event emission."),
+            },
+            Self::ContractSpecific { contract_id, code } => {
+                let contract = contract_id
+                    .as_deref()
+                    .unwrap_or("unknown contract");
+                format!(
+                    "Contract-specific error {code} from {contract}: run with --resolve to look up the error name from the contract's WASM metadata."
+                )
+            }
+            Self::Unknown { type_code, sub_code } => {
+                format!(
+                    "Unknown error (type {type_code}, sub-code {sub_code}): this error code is not recognised — the network may be running a newer protocol version."
+                )
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -157,5 +218,115 @@ mod tests {
         assert_eq!(parse_error_category("budget"), Some(ErrorCategory::Budget));
         assert_eq!(parse_error_category("STORAGE"), Some(ErrorCategory::Storage));
         assert_eq!(parse_error_category("unknown_xyz"), None);
+    }
+
+    #[test]
+    fn test_summary_known_codes() {
+        assert_eq!(
+            HostError::Budget { code: 0 }.summary(),
+            "CPU budget exceeded: the transaction ran out of CPU instructions before completing execution."
+        );
+        assert_eq!(
+            HostError::Storage { code: 0 }.summary(),
+            "Storage access denied: the contract tried to read or write a ledger entry not declared in the transaction footprint."
+        );
+        assert_eq!(
+            HostError::Auth { code: 0 }.summary(),
+            "Authorization failed: the transaction is missing or has invalid auth entries for this contract call."
+        );
+        assert_eq!(
+            HostError::Context { code: 0 }.summary(),
+            "Host internal error: an unexpected Soroban runtime error occurred — this may be a platform bug, not a contract bug."
+        );
+        assert_eq!(
+            HostError::Value { code: 0 }.summary(),
+            "Invalid value: a host function received an argument of the wrong type or format."
+        );
+        assert_eq!(
+            HostError::Object { code: 0 }.summary(),
+            "Index out of bounds: the contract accessed a vector or byte array with an index beyond its length."
+        );
+        assert_eq!(
+            HostError::Crypto { code: 0 }.summary(),
+            "Invalid cryptographic input: a public key, signature, or hash input has the wrong length or format."
+        );
+        assert_eq!(
+            HostError::Contract { code: 0 }.summary(),
+            "Contract error: the contract's own logic rejected this call — run with --resolve to map the code to its name."
+        );
+        assert_eq!(
+            HostError::Wasm { code: 0 }.summary(),
+            "Invalid WASM module: the contract bytecode failed validation — recompile with a compatible Soroban SDK version."
+        );
+        assert_eq!(
+            HostError::Events { code: 0 }.summary(),
+            "Event size limit exceeded: the transaction emitted more event data than the protocol allows in a single execution."
+        );
+    }
+
+    #[test]
+    fn test_summary_contract_specific_with_id() {
+        let s = HostError::ContractSpecific {
+            contract_id: Some("CABC123".to_string()),
+            code: 3,
+        }
+        .summary();
+        assert!(s.contains("CABC123"));
+        assert!(s.contains("3"));
+        assert!(s.contains("--resolve"));
+    }
+
+    #[test]
+    fn test_summary_contract_specific_no_id() {
+        let s = HostError::ContractSpecific {
+            contract_id: None,
+            code: 7,
+        }
+        .summary();
+        assert!(s.contains("unknown contract"));
+        assert!(s.contains("--resolve"));
+    }
+
+    #[test]
+    fn test_summary_unknown_variant() {
+        let s = HostError::Unknown { type_code: 9, sub_code: 42 }.summary();
+        assert!(s.contains("9"));
+        assert!(s.contains("42"));
+        assert!(s.contains("not recognised"));
+    }
+
+    #[test]
+    fn test_summary_unknown_codes_fallback() {
+        // Unknown codes within known categories should still return a useful message
+        let s = HostError::Budget { code: 99 }.summary();
+        assert!(s.contains("99"));
+        assert!(s.contains("Budget") || s.contains("budget"));
+    }
+
+    #[test]
+    fn test_summary_under_120_chars() {
+        // All known-code summaries must stay under 120 characters
+        let errors = vec![
+            HostError::Budget { code: 0 },
+            HostError::Storage { code: 0 },
+            HostError::Auth { code: 0 },
+            HostError::Context { code: 0 },
+            HostError::Value { code: 0 },
+            HostError::Object { code: 0 },
+            HostError::Crypto { code: 0 },
+            HostError::Contract { code: 0 },
+            HostError::Wasm { code: 0 },
+            HostError::Events { code: 0 },
+        ];
+        for err in errors {
+            let summary = err.summary();
+            assert!(
+                summary.len() <= 120,
+                "Summary too long ({} chars) for {:?}: {}",
+                summary.len(),
+                err,
+                summary
+            );
+        }
     }
 }
