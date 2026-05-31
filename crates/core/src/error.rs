@@ -4,7 +4,8 @@ use thiserror::Error;
 use serde::{Deserialize, Serialize};
 
 /// Standard JSON-RPC 2.0 error object.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Error)]
+#[error("JSON-RPC error (code: {code}): {message}")]
 pub struct JsonRpcError {
     /// Standard JSON-RPC error code.
     pub code: i64,
@@ -48,7 +49,7 @@ pub enum PrismError {
     RpcError(String),
 
     /// Standard JSON-RPC 2.0 error (e.g. Parse error, Invalid request).
-    #[error("JSON-RPC error (code: {0.code}): {0.message}")]
+    #[error(transparent)]
     JsonRpc(JsonRpcError),
     
     /// Error fetching or parsing history archive data.
