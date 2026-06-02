@@ -3,14 +3,16 @@
 //! Fetches and decompresses history archive files for cold-path state reconstruction.
 //! Supports S3/GCS/HTTP backends. Used only for older transactions outside the RPC hot path.
 
-use crate::types::config::NetworkConfig;
-use crate::types::error::{PrismError, PrismResult};
+use crate::network::NetworkConfig;
+use crate::error::{ArchiveErrorKind, PrismResult};
 
 /// Client for accessing Stellar History Archives.
 pub struct ArchiveClient {
     /// HTTP client.
+    #[allow(dead_code)]
     client: reqwest::Client,
     /// Archive base URLs.
+    #[allow(dead_code)]
     archive_urls: Vec<String>,
 }
 
@@ -43,15 +45,20 @@ impl ArchiveClient {
     pub async fn fetch_checkpoint(&self, ledger_sequence: u32) -> PrismResult<ArchiveCheckpoint> {
         let checkpoint_seq = (ledger_sequence / 64) * 64;
         let _path = format_checkpoint_path(checkpoint_seq);
+        let archive_count = self.archive_urls.len();
+        let _ = &self.client;
 
-        // TODO: Fetch and decompress archive files (gzip/xz)
-        // TODO: Try each archive URL in order until one succeeds
 
-        tracing::info!("Fetching archive checkpoint for ledger {checkpoint_seq}");
+        tracing::info!(
+            archive_count,
+            "Fetching archive checkpoint for ledger {checkpoint_seq}"
+        );
 
-        Err(PrismError::ArchiveError(
-            "Archive fetch not yet implemented".to_string(),
-        ))
+        Err(ArchiveErrorKind::FetchFailed {
+            file: format!("checkpoint-{checkpoint_seq}"),
+            reason: "Archive fetch not yet implemented".to_string(),
+        }
+        .into())
     }
 
     /// Fetch a specific ledger entry from the history archives.
@@ -60,9 +67,11 @@ impl ArchiveClient {
         _ledger_sequence: u32,
         _key: &str,
     ) -> PrismResult<Vec<u8>> {
-        Err(PrismError::ArchiveError(
-            "Ledger entry fetch not yet implemented".to_string(),
-        ))
+        Err(ArchiveErrorKind::FetchFailed {
+            file: format!("ledger-entry-{_ledger_sequence}-{_key}"),
+            reason: "Ledger entry fetch not yet implemented".to_string(),
+        }
+        .into())
     }
 }
 

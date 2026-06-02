@@ -1,7 +1,7 @@
 //! Trace collector — builds a hierarchical execution tree from raw trace events.
 
 use crate::replay::sandbox::{SandboxResult, TraceEventType};
-use crate::types::error::PrismResult;
+use crate::error::PrismResult;
 use crate::types::trace::{ContractInvocation, HostFunctionCall};
 
 /// Build a hierarchical execution tree from raw sandbox trace events.
@@ -67,7 +67,6 @@ pub fn build_trace_tree(result: &SandboxResult) -> PrismResult<Vec<ContractInvoc
                 }
             }
             _ => {
-                // Other event types are handled by enrichment passes
             }
         }
     }

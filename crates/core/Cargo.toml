@@ -1,3 +1,6 @@
+[lints]
+workspace = true
+
 [package]
 name = "prism-core"
 version.workspace = true
@@ -18,8 +21,6 @@ wasm-compat = []
 stellar-xdr = { workspace = true }
 stellar-strkey = { workspace = true }
 soroban-env-host = { workspace = true }
-soroban-spec = { workspace = true }
-soroban-spec-tools = { workspace = true }
 
 # Networking
 reqwest = { workspace = true }
@@ -44,7 +45,10 @@ tracing = { workspace = true }
 
 # Error handling
 anyhow = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 tokio-test = "0.4"
 insta = { version = "1", features = ["json"] }
+tracing-subscriber = { workspace = true }
+ctor = "0.2"

@@ -3,7 +3,7 @@
 //! Accepts state/input patches, forks from a checkpoint, replays with
 //! modifications, and produces a comparison trace.
 
-use crate::types::error::PrismResult;
+use crate::error::PrismResult;
 use crate::types::trace::ExecutionTrace;
 use serde::{Deserialize, Serialize};
 
@@ -59,13 +59,8 @@ pub async fn simulate_whatif(
     _patches: &[WhatIfPatch],
     _network: &crate::types::config::NetworkConfig,
 ) -> PrismResult<WhatIfResult> {
-    // TODO: Implement what-if simulation
-    // 1. Replay the original transaction
-    // 2. Apply patches to state/inputs
-    // 3. Re-execute from the patch point
-    // 4. Compare the two traces
 
-    Err(crate::types::error::PrismError::Internal(
+    Err(crate::error::PrismError::Internal(
         "What-if simulation not yet implemented".to_string(),
     ))
 }

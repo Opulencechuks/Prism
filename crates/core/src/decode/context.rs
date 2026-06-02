@@ -3,7 +3,7 @@
 //! Decodes the full transaction envelope: called function, decoded arguments,
 //! auth requirements, resource footprint, and fee breakdown.
 
-use crate::types::error::PrismResult;
+use crate::error::PrismResult;
 use crate::types::report::{DiagnosticReport, FeeBreakdown, ResourceSummary, TransactionContext};
 
 /// Enrich a diagnostic report with full transaction context.
@@ -17,7 +17,7 @@ pub fn enrich_report(
         .unwrap_or("unknown")
         .to_string();
 
-    let ledger_sequence = tx_data.get("ledger").and_then(|l| l.as_u64()).unwrap_or(0) as u32;
+    let ledger_sequence = tx_data.get("ledger").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32;
 
     let context = TransactionContext {
         tx_hash,
@@ -34,49 +34,45 @@ pub fn enrich_report(
 
 /// Extract the called function name from the transaction envelope.
 fn extract_function_name(tx_data: &serde_json::Value) -> Option<String> {
-    // TODO: Decode the InvokeHostFunction operation to extract the function name
     tx_data
         .get("functionName")
         .and_then(|f| f.as_str())
-        .map(|s| s.to_string())
+        .map(std::string::ToString::to_string)
 }
 
 /// Extract and decode function arguments.
 fn extract_arguments(tx_data: &serde_json::Value) -> Vec<String> {
-    // TODO: Decode SCVal arguments using contractspec type information
     tx_data
         .get("arguments")
         .and_then(|a| a.as_array())
-        .map(|args| args.iter().map(|a| a.to_string()).collect())
+        .map(|args| args.iter().map(std::string::ToString::to_string).collect())
         .unwrap_or_default()
 }
 
 /// Extract fee breakdown from the transaction.
 fn extract_fee_breakdown(tx_data: &serde_json::Value) -> FeeBreakdown {
-    // TODO: Parse actual fee components from the transaction
     FeeBreakdown {
         inclusion_fee: tx_data
             .get("inclusionFee")
-            .and_then(|f| f.as_i64())
+            .and_then(serde_json::Value::as_i64)
             .unwrap_or(0),
         resource_fee: tx_data
             .get("resourceFee")
-            .and_then(|f| f.as_i64())
+            .and_then(serde_json::Value::as_i64)
             .unwrap_or(0),
         refundable_fee: tx_data
             .get("refundableFee")
-            .and_then(|f| f.as_i64())
+            .and_then(serde_json::Value::as_i64)
             .unwrap_or(0),
         non_refundable_fee: tx_data
             .get("nonRefundableFee")
-            .and_then(|f| f.as_i64())
+            .and_then(serde_json::Value::as_i64)
             .unwrap_or(0),
     }
 }
 
 /// Extract resource usage summary.
-fn extract_resource_summary(tx_data: &serde_json::Value) -> ResourceSummary {
-    // TODO: Parse actual resource usage from the transaction result
+fn extract_resource_summary(_tx_data: &serde_json::Value) -> ResourceSummary {
     ResourceSummary {
         cpu_instructions_used: 0,
         cpu_instructions_limit: 0,

@@ -14,23 +14,42 @@
 //! - `debugger`: Enable Tier 3 interactive debugger (implies `replay`)
 //! - `wasm-compat`: Build for WASM target (disables features requiring native I/O)
 
+pub mod archive;
 pub mod cache;
 pub mod debugger;
 pub mod decode;
+pub mod error;
 pub mod network;
 pub mod replay;
+pub mod rpc;
 pub mod spec;
 pub mod taxonomy;
 pub mod types;
 pub mod xdr;
 
-// Re-export key types for convenience
+pub use network::config::Network;
+pub use types::address::Address;
 pub use types::config::NetworkConfig;
-pub use types::error::PrismError;
+pub use error::{PrismError, PrismResult};
 pub use types::report::DiagnosticReport;
 
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Soroban ledger protocol version supported by linked core crates.
-pub const SOROBAN_PROTOCOL_VERSION: u64 = soroban_env_host::meta::INTERFACE_VERSION;
+/// Soroban ledger protocol version supported by the linked core crates.
+pub const SOROBAN_PROTOCOL_VERSION: u32 =
+    soroban_env_host::meta::get_ledger_protocol_version(soroban_env_host::meta::INTERFACE_VERSION);
+
+#[cfg(test)]
+#[ctor::ctor]
+fn init_test_logging() {
+    use tracing_subscriber::EnvFilter;
+
+    let filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("prism_core=debug,soroban_env_host=warn"));
+
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_test_writer()
+        .try_init();
+}

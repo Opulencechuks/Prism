@@ -2,11 +2,14 @@
 
 use prism_core::types::report::DiagnosticReport;
 
-use crate::output::renderers::{render_section_header, BudgetBar};
+use crate::output::renderers::{render_section_header, render_error_card, render_fix_list, BudgetBar};
 
 /// Print a diagnostic report in human-readable colored format.
 pub fn print_report(report: &DiagnosticReport) -> anyhow::Result<()> {
-    // TODO: Implement rich colored terminal output
+    println!("{}", render_error_card(report));
+    println!();
+
+    println!("{}", render_section_header("Transaction Summary"));
     println!(
         "Error: {} ({}:{})",
         report.error_name, report.error_category, report.error_code
@@ -35,6 +38,11 @@ pub fn print_report(report: &DiagnosticReport) -> anyhow::Result<()> {
             .render()
         );
     }
-    
+
+    if !report.suggested_fixes.is_empty() {
+        println!();
+        println!("{}", render_fix_list(&report.suggested_fixes));
+    }
+
     Ok(())
 }

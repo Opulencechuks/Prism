@@ -5,10 +5,10 @@
 //! boundary to emit trace events.
 
 use crate::replay::state::LedgerState;
-use crate::types::error::{PrismError, PrismResult};
+use crate::error::{PrismError, PrismResult};
 
 /// A raw trace event emitted during sandboxed execution.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct TraceEvent {
     /// Event type.
     pub event_type: TraceEventType,
@@ -19,7 +19,7 @@ pub struct TraceEvent {
 }
 
 /// Types of trace events.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub enum TraceEventType {
     /// A contract invocation started.
     InvocationStart,
@@ -61,10 +61,6 @@ pub async fn execute_with_tracing(
     _state: &LedgerState,
     _tx_hash: &str,
 ) -> PrismResult<SandboxResult> {
-    // TODO: Initialize a modified soroban-env-host with tracing hooks
-    // TODO: Load the reconstructed state into the host
-    // TODO: Replay the transaction operations
-    // TODO: Collect all trace events
 
     tracing::info!("Sandbox execution with tracing — not yet implemented");
 

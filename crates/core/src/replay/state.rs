@@ -5,7 +5,7 @@
 //! - **Cold path:** Fall back to Stellar History Archives for older transactions
 
 use crate::types::config::NetworkConfig;
-use crate::types::error::{PrismError, PrismResult};
+use crate::error::{PrismError, PrismResult};
 use std::collections::HashMap;
 
 /// Reconstructed ledger state at a specific sequence number.
@@ -33,21 +33,19 @@ const HOT_PATH_THRESHOLD: u32 = 50_000;
 
 /// Reconstruct ledger state at the time of a transaction.
 pub async fn reconstruct_state(tx_hash: &str, network: &NetworkConfig) -> PrismResult<LedgerState> {
-    let rpc = crate::network::rpc::RpcClient::new(network.clone());
+    let rpc = crate::rpc::SorobanRpcClient::new(network);
 
-    // 1. Fetch the transaction to determine its ledger sequence
     let tx_data = rpc.get_transaction(tx_hash).await?;
     let tx_ledger = tx_data
-        .get("ledger")
-        .and_then(|l| l.as_u64())
-        .ok_or_else(|| PrismError::ReplayError("Cannot determine transaction ledger".to_string()))?
-        as u32;
+        .ledger
+        .ok_or_else(|| PrismError::ReplayError("Cannot determine transaction ledger".to_string()))?;
 
-    // 2. Get the current latest ledger
-    let latest = rpc.get_latest_ledger().await?;
-    let latest_ledger = latest.get("sequence").and_then(|s| s.as_u64()).unwrap_or(0) as u32;
+    let latest: serde_json::Value = rpc.get_latest_ledger().await?;
+    let latest_ledger = latest
+        .get("sequence")
+        .and_then(|s: &serde_json::Value| s.as_u64())
+        .unwrap_or(0) as u32;
 
-    // 3. Choose reconstruction path
     let age = latest_ledger.saturating_sub(tx_ledger);
 
     if age <= HOT_PATH_THRESHOLD {
@@ -62,9 +60,8 @@ pub async fn reconstruct_state(tx_hash: &str, network: &NetworkConfig) -> PrismR
 /// Hot path: reconstruct state from Soroban RPC.
 async fn reconstruct_hot_path(
     ledger_sequence: u32,
-    _rpc: &crate::network::rpc::RpcClient,
+    _rpc: &crate::rpc::SorobanRpcClient,
 ) -> PrismResult<LedgerState> {
-    // TODO: Use getLedgerEntries to fetch all entries in the transaction's footprint
     Ok(LedgerState {
         ledger_sequence,
         entries: HashMap::new(),
@@ -77,7 +74,6 @@ async fn reconstruct_cold_path(
     ledger_sequence: u32,
     _network: &NetworkConfig,
 ) -> PrismResult<LedgerState> {
-    // TODO: Use archive client + Captive Core to reconstruct historical state
     tracing::warn!("Cold path reconstruction is computationally heavy — this may take a while");
 
     Ok(LedgerState {
