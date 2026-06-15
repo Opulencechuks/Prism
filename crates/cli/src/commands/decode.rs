@@ -1,20 +1,14 @@
-//! `prism decode` — Decode a transaction error into plain English.
-
 use clap::Args;
 use prism_core::types::config::NetworkConfig;
 use prism_core::types::report::{DiagnosticReport, Severity};
 
-/// Arguments for the decode command.
 #[derive(Args)]
 pub struct DecodeArgs {
-    /// Transaction hash to decode, or a raw error string with --raw.
     pub tx_hash: String,
 
-    /// Decode a raw error string instead of fetching by TX hash.
     #[arg(long)]
     pub raw: bool,
 
-    /// Show short one-line summary only.
     #[arg(long)]
     pub short: bool,
 }
