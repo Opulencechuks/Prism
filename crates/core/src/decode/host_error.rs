@@ -320,7 +320,11 @@ mod tests {
         );
         assert_eq!(
             HostError::Object { code: 0 }.summary(),
-            "Index out of bounds: the contract accessed a vector or byte array with an index beyond its length."
+            "An unknown or unclassified host object error occurred."
+        );
+        assert_eq!(
+            HostError::Object { code: 5 }.summary(),
+            "An index out of bounds was used when accessing a host vector or byte array."
         );
         assert_eq!(
             HostError::Crypto { code: 0 }.summary(),
